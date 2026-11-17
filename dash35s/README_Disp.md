@@ -1,6 +1,6 @@
-# Dash35B
+# Dash35S
 
-VESC Dash35B UI for single horizontal display with 480x320 resolution and four buttons on a cable.
+VESC Dash35S UI for single horizontal display with 480x320 resolution and four buttons on a cable.
 
 **Note**  
 Version 2.4 goes with Dash ESC 2.4. The drive mode, the status banners and the logging button all need it.
@@ -43,6 +43,14 @@ The display shows a banner across the middle when the controller reports somethi
 **MOTOR CONFIG BAD** means the controller's stored motor parameters cannot describe a real motor, so it will not run at all. The controller suspends its drive profile by itself in that state so the motor can be detected again.
 
 ## Changelog
+
+**Version 2.5 (2026-11-17)**
+
+* Added support for Dash35S
+* Fixed four-button voltage detection and disabled button pull-ups while USB is connected
+* Backlight range 1–100% with live preview
+* Updated stored settings for the new backlight range
+* Wi-Fi is no longer automatically disabled at startup when BLE is enabled
 
 **Version 2.4 (2026-09-13)**
 * Drive mode follows the controller, so two displays always agree on it

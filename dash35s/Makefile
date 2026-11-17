@@ -1,9 +1,9 @@
 VESC_TOOL ?= vesc_tool
 
-all: dash35b.vescpkg
+all: dash35s.vescpkg
 
-dash35b.vescpkg: README_Disp-gen.md ui.qml version.lisp
-	$(VESC_TOOL) --buildPkgFromDesc pkgdesc.qml --testPkgDesc 'custom:test' --testPkgDesc 'custom:vdisp 900' --testPkgDesc 'vesc:test'
+dash35s.vescpkg: README_Disp-gen.md ui.qml version.lisp
+	$(VESC_TOOL) --buildPkgFromDesc pkgdesc.qml --testPkgDesc 'custom:test' --testPkgDesc 'custom:Dash35S' --testPkgDesc 'vesc:test'
 
 VERSION=`cat version`
 
@@ -23,7 +23,7 @@ version.lisp: version.lisp.in version
 	cat version.lisp.in | sed "s/{{VERSION}}/${VERSION}/g" > version.lisp
 
 clean:
-	rm -f dash35b.vescpkg
+	rm -f dash35s.vescpkg
 	rm -f README_Disp-gen.md
 	rm -f ui.qml
 	rm -f version.lisp

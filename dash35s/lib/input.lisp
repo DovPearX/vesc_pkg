@@ -8,10 +8,6 @@
 (def btn '(0 0 0 0))
 (def usb 0)
 
-(def ads-addr 0x48)
-(def buf-ads-tx (bufcreate 3))
-(def buf-ads-rx (bufcreate 2))
-
 @const-start
 
 ; Evaluate expression if the function isn't nil.
@@ -63,37 +59,24 @@
         (loopwhile t {
                 (sleep 0.02) ; TODO: Rate limit
 
-                (bufset-u8 buf-ads-tx 0 1)
-
                 (if (not (connected-usb)) {
                         (setq usb 0)
                         (btn-pull-en true)
-
-                        (looprange i 0 2 {
-                                (bufset-u16 buf-ads-tx 1 (+
-                                        (bits-enc-int 0 12 (+ i 4) 3) ; Channel i
-                                        (bits-enc-int 0 9 1 3) ; +- 4.096 V
-                                        (bits-enc-int 0 5 5 3) ; 1600 SPS
-                                        (bits-enc-int 0 0 3 2) ; Disable comparator
-                                ))
-
-                                (i2c-tx-rx ads-addr buf-ads-tx)
-                                (sleep 0.005)
-                                (i2c-tx-rx ads-addr '(0) buf-ads-rx)
-                                (set (ix '(v0 v1 v2 v3) i) (* (/ (bufget-i16 buf-ads-rx 0) 32768.0) 4.096))
-                                (sleep 0.005)
-                        })
-
+                        (sleep 0.03)
+                        (var volts (btn-read))
                         (btn-pull-en false)
+                        (setq v0 (ix volts 0))
+                        (setq v1 (ix volts 1))
                     }
                     {
                         (setq usb 1)
+                        (btn-pull-en false)
                 })
 
-                (var new-btn-0 (and (> v1 1.18) (< v1 1.3)))
-                (var new-btn-1 (and (> v1 1.5) (< v1 1.8)))
-                (var new-btn-2 (and (> v1 2.1) (< v1 2.4)))
-                (var new-btn-3 (< v0 1.6))
+                (var new-btn-0 (and (= usb 0) (> v1 0.2) (< v1 0.57)))
+                (var new-btn-1 (and (= usb 0) (> v1 0.57) (< v1 1.0)))
+                (var new-btn-2 (and (= usb 0) (> v1 1.0) (< v1 1.6)))
+                (var new-btn-3 (and (= usb 0) (< v0 0.3)))
 
                 ; buttons are pressed on release
                 (if (and (>= btn-0 input-debounce-count) (not new-btn-0) (not btn-0-long-fired))

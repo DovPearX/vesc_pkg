@@ -183,28 +183,14 @@
         (ttf-txt-center splash-version font-16 imgbuf)
         (disp-render imgbuf 120 196 colors-text-aa)
 
-        (looprange i 1 (+ settings-bl-bright 1) {
-                (disp-set-bl i)
-                (sleep 0.06)
+        (looprange i 0 9 {
+                (disp-set-bl (* settings-bl-bright (- 1.0 (/ (+ i 1) 9.0))))
+                (sleep 0.02)
         })
-
-        (sleep 1.8)
         (disp-clear color-bg)
 })
 
 (defun main () {
-        (if (and
-                (> (conf-get 'wifi-mode) 0)
-                (> (conf-get 'ble-mode) 0)
-                ) {
-                (print "WiFi and BLE enabled, not enough memory to run UI. Disabling wifi...")
-                (conf-set 'wifi-mode 0)
-                (conf-set 'controller-id 4)
-                (conf-store)
-                (sleep 5)
-                (reboot)
-        })
-
         (def dm-pool (dm-create 25600))
 
         (set-print-prefix "DISP-")

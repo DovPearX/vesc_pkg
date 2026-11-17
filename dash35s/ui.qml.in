@@ -26,13 +26,13 @@ Item {
 
     property var actionNames: [
         "Nothing", "Next page", "Previous page", "Settings page",
-        "Drive mode up", "Drive mode down", "Lights", "Backlight dim",
+        "Drive mode up", "Drive mode down", "Lights", "Backlight dimmed",
         "Cruise control", "Toggle logging"
     ]
 
     property var rowNames: [
         "Wheelie enable", "Wheelie angle start", "Wheelie angle end",
-        "Wheelie damping", "Backlight bright", "Backlight dim",
+        "Wheelie damping", "Backlight normal", "Backlight dimmed",
         "Battery warning", "Controller warning", "Motor warning",
         "Metric speed", "Metric temperature"
     ]
@@ -106,7 +106,22 @@ Item {
         }
     }
 
+    function clearBacklightPreviews() {
+        sendQueue = sendQueue.filter(function(cmd) {
+            return cmd.indexOf("(bl-preview ") !== 0
+        })
+    }
+
+    function previewBacklight(value) {
+        clearBacklightPreviews()
+        send("(bl-preview " + Math.round(value) + ")")
+    }
+
     function setSetting(name, value) {
+        if (name === "bl-bright" || name === "bl-dim") {
+            clearBacklightPreviews()
+            value = Math.round(value)
+        }
         send("(settings-set '" + name + " " + value + ")")
     }
 
@@ -236,7 +251,7 @@ Item {
             Text {
                 color: Utility.getAppHexColor("lightText")
                 Layout.fillWidth: true
-                text: "Dash35B Package"
+                text: "Dash35S Package"
                 font.weight: Font.Black
                 font.pointSize: 18
             }
@@ -410,7 +425,7 @@ Item {
                         columns: 3
 
                         Text {
-                            text: "Bright"
+                            text: "Normal"
                             color: Utility.getAppHexColor("lightText")
                         }
 
@@ -418,12 +433,12 @@ Item {
                             id: blBright
                             Layout.fillWidth: true
                             from: 1
-                            to: 7
+                            to: 100
                             stepSize: 1
                             snapMode: Slider.SnapAlways
                             // Preview while dragging, commit on release, so the
                             // level can be judged on the display before it sticks.
-                            onMoved: if (!loading) send("(bl-preview " + value + ")")
+                            onMoved: if (!loading) previewBacklight(value)
                             onPressedChanged: {
                                 if (!pressed && !loading) {
                                     setSetting("bl-bright", value)
@@ -432,12 +447,12 @@ Item {
                         }
 
                         Text {
-                            text: blBright.value
+                            text: blBright.value + " %"
                             color: Utility.getAppHexColor("lightText")
                         }
 
                         Text {
-                            text: "Dim"
+                            text: "Dimmed"
                             color: Utility.getAppHexColor("lightText")
                         }
 
@@ -445,12 +460,12 @@ Item {
                             id: blDim
                             Layout.fillWidth: true
                             from: 1
-                            to: 7
+                            to: 100
                             stepSize: 1
                             snapMode: Slider.SnapAlways
                             // Preview while dragging, commit on release, so the
                             // level can be judged on the display before it sticks.
-                            onMoved: if (!loading) send("(bl-preview " + value + ")")
+                            onMoved: if (!loading) previewBacklight(value)
                             onPressedChanged: {
                                 if (!pressed && !loading) {
                                     setSetting("bl-dim", value)
@@ -459,7 +474,7 @@ Item {
                         }
 
                         Text {
-                            text: blDim.value
+                            text: blDim.value + " %"
                             color: Utility.getAppHexColor("lightText")
                         }
                     }
