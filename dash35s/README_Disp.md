@@ -3,7 +3,7 @@
 VESC Dash35S UI for single horizontal display with 480x320 resolution and four buttons on a cable.
 
 **Note**  
-Version 2.4 goes with Dash ESC 2.4. The drive mode, the status banners and the logging button all need it.
+Version 2.5 goes with Dash ESC 2.4. The drive mode, the status banners and the logging button all need it.
 
 ## Settings
 

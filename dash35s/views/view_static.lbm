@@ -154,7 +154,7 @@
                 })
 
                 ; Clock
-                (if (or (ix update-state 13) (ix update-state 25)) {
+                (if (and (not splash-active) (or (ix update-state 13) (ix update-state 25))) {
                         (var imgbuf (img-buffer dm-pool 'indexed4 46 17))
                         (img-clear imgbuf)
 

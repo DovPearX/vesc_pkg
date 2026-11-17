@@ -173,21 +173,58 @@
         })
 })
 
+(def splash-active nil)
+
 (defun show-splash () {
-        (print "Splash")
-
-        (disp-render img-vesclabs 110 100 (list color-bg 0xF05A22 0xF05A22 0xFBFCFC))
-
-        (var imgbuf (img-buffer dm-pool 'indexed4 240 22))
+        (setq splash-active true)
+        (disp-set-bl 0)
+        (disp-clear color-bg)
+        (var frame (img-buffer 'rgb565 480 320))
+        (var logo (img-buffer 'rgb565 260 80))
+        (var imgbuf (img-buffer 'indexed4 240 22))
+        (var pieces nil)
+        (img-clear logo)
+        (img-blit logo img-vesclabs 0 0 -1 (list 'palette (list color-bg 0xF05A22 0xF05A22 0xFBFCFC)))
         (img-clear imgbuf)
         (ttf-txt-center splash-version font-16 imgbuf)
-        (disp-render imgbuf 120 196 colors-text-aa)
 
-        (looprange i 0 9 {
-                (disp-set-bl (* settings-bl-bright (- 1.0 (/ (+ i 1) 9.0))))
-                (sleep 0.02)
+        (looprange index 0 13 {
+                (var piece (img-buffer 'rgb565 20 80))
+                (looprange row 0 80 {
+                        (bufcpy piece (+ 5 (* row 40)) logo (+ 5 (* row 520) (* index 40)) 40)
+                })
+                (setq pieces (append pieces (list piece)))
         })
+        (free logo)
+
+        (sleep 0.3)
+        (looprange step 0 44 {
+                (img-clear frame color-bg)
+                (looprange index 0 13 {
+                        (var age (- step (mod (* index 5) 7)))
+                        (var progress (clamp (/ age 20.0) 0.0 1.0))
+                        (var remaining (- 1.0 (* progress progress)))
+                        (var impact (- age 20))
+                        (var bounce (if (and (> impact 0) (< impact 14)) (* -7.0 (sin (* impact 0.8)) (/ (- 14 impact) 14.0)) 0.0))
+                        (var direction (if (= (mod index 2) 0) -1 1))
+                        (var vertical (- (mod index 3) 1))
+                        (var x (+ 110 (* index 20) (to-i (* direction (+ (* 420 remaining) bounce)))))
+                        (var y (+ 100 (to-i (* vertical (+ (* 240 remaining) (* bounce 0.4))))))
+                        (img-blit frame (ix pieces index) x y 0)
+                })
+                (if (>= step 38) (img-blit frame imgbuf 120 282 0 (list 'palette colors-text-aa)))
+                (disp-render frame 0 0)
+                (if (< step 12) (disp-set-bl (* settings-bl-bright (/ (+ step 1) 12.0))))
+                (sleep 0.025)
+        })
+        (sleep 0.7)
         (disp-clear color-bg)
+        (free frame)
+        (free imgbuf)
+        (loopforeach piece pieces (free piece))
+        (setq splash-active nil)
+        (setq view-force-static true)
+        (setq view-force-pages true)
 })
 
 (defun main () {
@@ -225,6 +262,7 @@
         ; Trapped: the backlight is off at this point, so a splash that throws
         ; would leave a dark unresponsive panel that looks like a dead unit.
         (if settings-splash (trap (show-splash)))
+        (setq splash-active nil)
         (disp-set-bl settings-bl-bright)
 
         (event-register-handler (spawn event-handler))
