@@ -15,8 +15,8 @@
 (def config-curr-brake 60.0)
 
 ; Backlight levels
-(def bl-lvl-bright 5)
-(def bl-lvl-dim 1)
+(def bl-lvl-bright 70)
+(def bl-lvl-dim 15)
 
 ; Default light state
 (def light-on-default false)

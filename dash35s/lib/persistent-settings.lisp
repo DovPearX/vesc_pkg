@@ -133,7 +133,7 @@
 ))
 
 ; Settings version
-(def settings-version 54i32)
+(def settings-version 55i32)
 
 (defun read-setting (name)
     (let (
@@ -163,8 +163,8 @@
         (whl-start    "Angle Start" "%.1f deg" 0.5   0.0  55.0)
         (whl-end      "Angle End"   "%.1f deg" 0.5   0.0  55.0)
         (whl-kd       "Damping"     "%.3f"     0.001 0.0  0.2)
-        (bl-bright    "BL Bright"   "%d"       1     1    7)
-        (bl-dim       "BL Dim"      "%d"       1     1    7)
+        (bl-bright    "BL Normal %" "%d"       1     1    100)
+        (bl-dim       "BL Dimmed %"    "%d"       1     1    100)
         (batt-hot     "Batt Warn"   "%.0f C"   1.0   0.0  200.0)
         (esc-hot      "ESC Warn"    "%.0f C"   1.0   0.0  200.0)
         (motor-hot    "Motor Warn"  "%.0f C"   1.0   0.0  200.0)
@@ -201,8 +201,8 @@
         (setq settings-batt-hot (setting-clamp (read-setting 'batt-hot) 0.0 200.0 config-battery-hot))
         (setq settings-esc-hot (setting-clamp (read-setting 'esc-hot) 0.0 200.0 config-esc-hot))
         (setq settings-motor-hot (setting-clamp (read-setting 'motor-hot) 0.0 200.0 config-motor-hot))
-        (setq settings-bl-bright (setting-clamp (read-setting 'bl-bright) 1 7 bl-lvl-bright))
-        (setq settings-bl-dim (setting-clamp (read-setting 'bl-dim) 1 7 bl-lvl-dim))
+        (setq settings-bl-bright (setting-clamp (read-setting 'bl-bright) 1 100 bl-lvl-bright))
+        (setq settings-bl-dim (setting-clamp (read-setting 'bl-dim) 1 100 bl-lvl-dim))
         ; view_static labels only 0-4, dash_esc matches only 0-4.
         (setq drive-mode-num (setting-clamp (read-setting 'drive-modes) 1 5 5))
         (setq settings-page-mask (setting-clamp (read-setting 'page-mask) 1 0xF 0xF))
@@ -315,7 +315,7 @@
 })
 
 ; Preview without storing, for the slider.
-(defun bl-preview (v) (disp-set-bl (setting-clamp v 1 7 settings-bl-bright)))
+(defun bl-preview (v) (disp-set-bl (setting-clamp v 1 100 settings-bl-bright)))
 
 ; One framed packet, not seven prints, and no 0.5 s REPL limit.
 (defun send-cfg ()

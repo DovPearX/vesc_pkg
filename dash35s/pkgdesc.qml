@@ -1,12 +1,12 @@
 import QtQuick 2.15
 
 Item {
-    property string pkgName: "Dash 35B"
+    property string pkgName: "Dash 35S"
     property string pkgDescriptionMd: "README_Disp-gen.md"
     property string pkgLisp: "main.lisp"
     property string pkgQml: "ui.qml"
     property bool pkgQmlIsFullscreen: false
-    property string pkgOutput: "dash35b.vescpkg"
+    property string pkgOutput: "dash35s.vescpkg"
 
     // This function should return true when this package is compatible
     // with the connected vesc-based device
@@ -33,7 +33,7 @@ Item {
         }
 
         var res = false
-        if (hwName == "vdisp 900") {
+        if (hwName == "dash35s") {
             res = true
         }
 
