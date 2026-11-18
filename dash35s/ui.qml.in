@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.3
+import QtQuick.Dialogs 1.3 as Dialogs
 import Vedder.vesc.utility 1.0
 
 import Vedder.vesc.commands 1.0
@@ -54,6 +55,40 @@ Item {
             }
         }
         return 0
+    }
+
+    function colorFromRgb(value) {
+        return Qt.rgba(((value >> 16) & 255) / 255,
+                       ((value >> 8) & 255) / 255,
+                       (value & 255) / 255, 1)
+    }
+
+    function colorToRgb(value) {
+        return (Math.round(value.r * 255) << 16) |
+               (Math.round(value.g * 255) << 8) |
+               Math.round(value.b * 255)
+    }
+
+    function openColorPicker(name, field) {
+        rgbPicker.settingName = name
+        rgbPicker.targetField = field
+        rgbPicker.color = field.selectedColor
+        rgbPicker.open()
+    }
+
+    Dialogs.ColorDialog {
+        id: rgbPicker
+        objectName: "rgbPicker"
+        property string settingName: ""
+        property var targetField: null
+        title: settingName === "col-accent" ? "Dial and accent" : "Text"
+        showAlphaChannel: false
+        onAccepted: {
+            if (targetField && haveRead && !loading) {
+                targetField.selectedColor = color
+                setSetting(settingName, colorToRgb(color))
+            }
+        }
     }
 
     property var slotNames: [
@@ -221,8 +256,8 @@ Item {
                     (iconMask & (1 << ic)) !== 0
             }
 
-            accentBox.currentIndex = colorIndexOf(parseInt(v[23]))
-            textBox.currentIndex = colorIndexOf(parseInt(v[24]))
+            accentBox.selectedColor = colorFromRgb(parseInt(v[23]))
+            textBox.selectedColor = colorFromRgb(parseInt(v[24]))
             for (var sl = 0; sl < 4; sl++) {
                 var it = slotRepeater.itemAt(sl)
                 it.source = parseInt(v[25 + sl])
@@ -562,32 +597,52 @@ Item {
                             color: Utility.getAppHexColor("lightText")
                         }
 
-                    ComboBox {
-                        id: accentBox
-                        Layout.fillWidth: true
-                        model: colorNames
-                        onActivated: {
-                            if (!loading) {
-                                setSetting("col-accent", colorValues[currentIndex])
+                        Button {
+                            id: accentBox
+                            objectName: "accentBox"
+                            property color selectedColor: "#00C8FF"
+                            Layout.fillWidth: true
+                            leftPadding: 38
+                            text: selectedColor.toString().toUpperCase()
+                            enabled: haveRead
+                            onClicked: openColorPicker("col-accent", accentBox)
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 18
+                                height: 18
+                                color: accentBox.selectedColor
+                                border.color: Utility.getAppHexColor("lightText")
                             }
                         }
-                    }
 
                         Text {
                             text: "Text"
                             color: Utility.getAppHexColor("lightText")
                         }
 
-                    ComboBox {
-                        id: textBox
-                        Layout.fillWidth: true
-                        model: colorNames
-                        onActivated: {
-                            if (!loading) {
-                                setSetting("col-text", colorValues[currentIndex])
+                        Button {
+                            id: textBox
+                            objectName: "textBox"
+                            property color selectedColor: "#FBFCFC"
+                            Layout.fillWidth: true
+                            leftPadding: 38
+                            text: selectedColor.toString().toUpperCase()
+                            enabled: haveRead
+                            onClicked: openColorPicker("col-text", textBox)
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 18
+                                height: 18
+                                color: textBox.selectedColor
+                                border.color: Utility.getAppHexColor("lightText")
                             }
                         }
-                    }
                     }
 
                     Text {
