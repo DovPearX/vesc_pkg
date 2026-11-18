@@ -18,6 +18,8 @@
 ; Short/long action id per button. See btn-do-action.
 (def btn-actions-short (list 1 5 4 6))
 (def btn-actions-long (list 3 8 0 7))
+(def btn-actions-double (list 0 0 0 0))
+(def settings-reverse-buttons false)
 
 ; 0 auto, 1 assume dash_esc, 2 assume stock.
 (def settings-esc-mode 0)
@@ -125,6 +127,12 @@
 
     (batt-ramp . (77 i))
     (splash-en . (78 i))
+
+    (btn0-double . (81 i))
+    (btn1-double . (82 i))
+    (btn2-double . (83 i))
+    (btn3-double . (84 i))
+    (ui-button-reverse . (85 i))
 ))
 
 (defun print-settings ()
@@ -212,6 +220,9 @@
                 '(btn0-short btn1-short btn2-short btn3-short)))
         (setq btn-actions-long (map (fn (n) (setting-clamp (read-setting n) 0 9 0))
                 '(btn0-long btn1-long btn2-long btn3-long)))
+        (setq btn-actions-double (map (fn (n) (setting-clamp (read-setting n) 0 9 0))
+                '(btn0-double btn1-double btn2-double btn3-double)))
+        (setq settings-reverse-buttons (setting-flag 'ui-button-reverse false))
 
         (setq settings-esc-mode (setting-clamp (read-setting 'esc-mode) 0 2 0))
         (setq settings-esc-id (setting-clamp (read-setting 'esc-id) 0 253 0))
@@ -367,7 +378,12 @@
             (str-from-n (ix settings-slot-maxs 2) "%.0f ")
             (str-from-n (ix settings-slot-maxs 3) "%.0f ")
             (str-from-n (if settings-batt-ramp 1 0) "%d ")
-            (str-from-n (if settings-splash 1 0) "%d")
+            (str-from-n (if settings-splash 1 0) "%d ")
+            (str-from-n (ix btn-actions-double 0) "%d ")
+            (str-from-n (ix btn-actions-double 1) "%d ")
+            (str-from-n (ix btn-actions-double 2) "%d ")
+            (str-from-n (ix btn-actions-double 3) "%d ")
+            (str-from-n (if settings-reverse-buttons 1 0) "%d")
 )))
 
 (defun restore-settings ()
@@ -431,6 +447,8 @@
                 (write-setting (ix '(slot-max-0 slot-max-1 slot-max-2 slot-max-3) i) 100.0)
         })
 
+        (loopforeach name '(btn0-double btn1-double btn2-double btn3-double ui-button-reverse)
+            (write-setting name 0))
         (write-setting 'ver-code settings-version)
         (print "Settings Restored!")
 ))
@@ -438,3 +456,6 @@
 ; Restore settings if version number does not match
 ; as that probably means something else is in eeprom
 (if (not-eq (read-setting 'ver-code) settings-version) (restore-settings))
+
+(loopforeach name '(btn0-double btn1-double btn2-double btn3-double ui-button-reverse)
+    (if (eq (read-setting name) nil) (write-setting name 0)))
