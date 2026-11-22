@@ -27,7 +27,7 @@ Item {
     property var actionNames: [
         "Nothing", "Next page", "Previous page", "Settings page",
         "Drive mode up", "Drive mode down", "Lights", "Backlight dim",
-        "Cruise control", "Toggle logging"
+        "Cruise control", "Toggle logging", "Wheelie settings"
     ]
 
     property var rowNames: [
@@ -47,13 +47,15 @@ Item {
         0x1D7BE8, 0x9F20F1, 0xFFD400, 0x787878
     ]
 
-    function colorIndexOf(v) {
-        for (var i = 0; i < colorValues.length; i++) {
-            if (colorValues[i] === v) {
-                return i
-            }
-        }
-        return 0
+    function colorHex(value) {
+        return "#" + ("000000" + (value & 0xffffff).toString(16)).slice(-6).toUpperCase()
+    }
+
+    function editColor(control, setting) {
+        rgbDialog.target = control
+        rgbDialog.setting = setting
+        rgbDialog.loadRgb(control.rgb)
+        rgbDialog.open()
     }
 
     property var slotNames: [
@@ -202,12 +204,12 @@ Item {
                     (iconMask & (1 << ic)) !== 0
             }
 
-            accentBox.currentIndex = colorIndexOf(parseInt(v[23]))
-            textBox.currentIndex = colorIndexOf(parseInt(v[24]))
+            accentBox.rgb = parseInt(v[23])
+            textBox.rgb = parseInt(v[24])
             for (var sl = 0; sl < 4; sl++) {
                 var it = slotRepeater.itemAt(sl)
                 it.source = parseInt(v[25 + sl])
-                it.slotColor = colorIndexOf(parseInt(v[29 + sl]))
+                it.slotColor = parseInt(v[29 + sl])
                 it.ramp = parseInt(v[33 + sl]) === 1
                 it.rangeLo = parseInt(v[37 + sl])
                 it.rangeHi = parseInt(v[41 + sl])
@@ -218,6 +220,77 @@ Item {
             loading = false
             haveRead = true
             statusText.text = "Read from display"
+        }
+    }
+
+    Dialog {
+        id: rgbDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        title: "RGB colour"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        property Item target
+        property string setting
+
+        function loadRgb(value) {
+            redChannel.value = (value >> 16) & 255
+            greenChannel.value = (value >> 8) & 255
+            blueChannel.value = value & 255
+        }
+
+        readonly property int rgb: (redChannel.value << 16)
+                                   | (greenChannel.value << 8) | blueChannel.value
+
+        onAccepted: {
+            target.rgb = rgb
+            setSetting(setting, rgb)
+        }
+
+        ColumnLayout {
+            ComboBox {
+                Layout.fillWidth: true
+                model: colorNames
+                currentIndex: -1
+                displayText: "Palette"
+                onActivated: rgbDialog.loadRgb(colorValues[currentIndex])
+            }
+
+            GridLayout {
+                columns: 2
+                Label { text: "R" }
+                SpinBox {
+                    id: redChannel
+                    from: 0
+                    to: 255
+                    editable: true
+                }
+                Label { text: "G" }
+                SpinBox {
+                    id: greenChannel
+                    from: 0
+                    to: 255
+                    editable: true
+                }
+                Label { text: "B" }
+                SpinBox {
+                    id: blueChannel
+                    from: 0
+                    to: 255
+                    editable: true
+                }
+            }
+
+            RowLayout {
+                Rectangle {
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 20
+                    color: colorHex(rgbDialog.rgb)
+                    border.color: "#808080"
+                }
+                Label { text: colorHex(rgbDialog.rgb) }
+            }
         }
     }
 
@@ -543,32 +616,58 @@ Item {
                             color: Utility.getAppHexColor("lightText")
                         }
 
-                    ComboBox {
-                        id: accentBox
-                        Layout.fillWidth: true
-                        model: colorNames
-                        onActivated: {
-                            if (!loading) {
-                                setSetting("col-accent", colorValues[currentIndex])
-                            }
+                        Button {
+                            id: accentBox
+                            property int rgb: 0
+                            Layout.fillWidth: true
+                            text: colorHex(rgb)
+                            onClicked: editColor(accentBox, "col-accent")
                         }
-                    }
 
                         Text {
                             text: "Text"
                             color: Utility.getAppHexColor("lightText")
                         }
 
-                    ComboBox {
-                        id: textBox
-                        Layout.fillWidth: true
-                        model: colorNames
-                        onActivated: {
-                            if (!loading) {
-                                setSetting("col-text", colorValues[currentIndex])
-                            }
+                        Button {
+                            id: textBox
+                            property int rgb: 0
+                            Layout.fillWidth: true
+                            text: colorHex(rgb)
+                            onClicked: editColor(textBox, "col-text")
                         }
                     }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        CheckBox {
+                            id: battRampBox
+                            text: "Battery gradient"
+                            onClicked: if (!loading) setSetting("batt-ramp", checked ? 1 : 0)
+                        }
+
+                        Rectangle {
+                            visible: battRampBox.checked
+                            Layout.preferredWidth: 72
+                            Layout.preferredHeight: 8
+                            radius: 4
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop {
+                                    position: 0.0
+                                    color: "#ff3030"
+                                }
+                                GradientStop {
+                                    position: 0.5
+                                    color: "#ffd400"
+                                }
+                                GradientStop {
+                                    position: 1.0
+                                    color: "#00c321"
+                                }
+                            }
+                        }
                     }
 
                     Text {
@@ -607,7 +706,7 @@ Item {
                         ColumnLayout {
                             property int slotIndex: index
                             property alias source: slotBox.currentIndex
-                            property alias slotColor: slotColBox.currentIndex
+                            property alias slotColor: slotColBox.rgb
                             property alias ramp: rampBox.checked
                             property alias rangeLo: loBox.value
                             property alias rangeHi: hiBox.value
@@ -636,16 +735,12 @@ Item {
                                     }
                                 }
 
-                                ComboBox {
+                                Button {
                                     id: slotColBox
+                                    property int rgb: 0
                                     Layout.preferredWidth: 110
-                                    model: colorNames
-                                    onActivated: {
-                                        if (!loading) {
-                                            setSetting("slot-col-" + slotIndex,
-                                                       colorValues[currentIndex])
-                                        }
-                                    }
+                                    text: colorHex(rgb)
+                                    onClicked: editColor(slotColBox, "slot-col-" + slotIndex)
                                 }
                             }
 
@@ -835,16 +930,6 @@ Item {
                 }
 
                 CheckBox {
-                    id: battRampBox
-                    text: "Colour the battery bar by charge"
-                    onClicked: {
-                        if (!loading) {
-                            setSetting("batt-ramp", checked ? 1 : 0)
-                        }
-                    }
-                }
-
-                CheckBox {
                     id: splashBox
                     text: "Show the boot splash"
                     checked: true
@@ -904,7 +989,7 @@ Item {
                         Layout.bottomMargin: 4
 
                         Text {
-                            text: "Button " + btnIndex
+                            text: "Button " + (btnIndex + 1)
                             color: Utility.getAppHexColor("lightText")
                             font.weight: Font.Black
                         }
@@ -952,6 +1037,7 @@ Item {
                                 }
                             }
                         }
+
                     }
                 }
             }

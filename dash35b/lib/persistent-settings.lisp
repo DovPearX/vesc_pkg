@@ -17,7 +17,7 @@
 
 ; Short/long action id per button. See btn-do-action.
 (def btn-actions-short (list 1 5 4 6))
-(def btn-actions-long (list 3 8 0 7))
+(def btn-actions-long (list 10 8 0 7))
 
 ; 0 auto, 1 assume dash_esc, 2 assume stock.
 (def settings-esc-mode 0)
@@ -34,7 +34,7 @@
 (def settings-slot-modes (list 0 0 0 0))
 
 ; Colour the battery bar by charge rather than the accent.
-(def settings-batt-ramp false)
+(def settings-batt-ramp true)
 
 (def settings-splash true)
 (def settings-slot-mins (list 0.0 0.0 0.0 0.0))
@@ -208,15 +208,15 @@
         (setq settings-page-mask (setting-clamp (read-setting 'page-mask) 1 0xF 0xF))
         (setq settings-setting-mask (setting-clamp (read-setting 'setting-mask) 0 0x7FF 0xF))
 
-        (setq btn-actions-short (map (fn (n) (setting-clamp (read-setting n) 0 9 0))
+        (setq btn-actions-short (map (fn (n) (setting-clamp (read-setting n) 0 10 0))
                 '(btn0-short btn1-short btn2-short btn3-short)))
-        (setq btn-actions-long (map (fn (n) (setting-clamp (read-setting n) 0 9 0))
+        (setq btn-actions-long (map (fn (n) (setting-clamp (read-setting n) 0 10 0))
                 '(btn0-long btn1-long btn2-long btn3-long)))
 
         (setq settings-esc-mode (setting-clamp (read-setting 'esc-mode) 0 2 0))
         (setq settings-esc-id (setting-clamp (read-setting 'esc-id) 0 253 0))
         (setq settings-icon-mask (setting-clamp (read-setting 'icon-mask) 0 0x3F 0x3F))
-        (setq settings-batt-ramp (setting-flag 'batt-ramp false))
+        (setq settings-batt-ramp (setting-flag 'batt-ramp true))
         (setq settings-splash (setting-flag 'splash-en true))
         (setq color-accent (setting-clamp (read-setting 'col-accent) 0 0xFFFFFF 0x00C8FF))
         (setq color-text (setting-clamp (read-setting 'col-text) 0 0xFFFFFF 0xfbfcfc))
@@ -297,18 +297,20 @@
 ; Reload now so a read back is current, but leave the repaint to the worker.
 (defun settings-set (name val) {
         (write-setting name val)
-        (settings-load)
-        (settings-build)
-        (settings-apply-units)
-        (settings-apply-pages)
-        (setq settings-redraw true)
+        (if (not (list-find wheelie-fields name)) {
+                (settings-load)
+                (settings-build)
+                (settings-apply-units)
+                (settings-apply-pages)
+                (setq settings-redraw true)
+        })
 })
 
 ; Everything on screen is now the wrong colour, so redraw the lot.
 (defun settings-apply-visual () {
         (setq settings-redraw false)
         (colors-build)
-        (disp-clear color-bg)
+        (scene-clear-screen color-bg)
         (setq view-force-static true)
         (setq view-force-pages true)
         (disp-set-bl (if backlight-dim settings-bl-dim settings-bl-bright))
@@ -404,7 +406,7 @@
         (write-setting 'btn1-short 5)
         (write-setting 'btn2-short 4)
         (write-setting 'btn3-short 6)
-        (write-setting 'btn0-long 3)
+        (write-setting 'btn0-long 10)
         (write-setting 'btn1-long 8)
         (write-setting 'btn2-long 0)
         (write-setting 'btn3-long 7)
@@ -413,7 +415,7 @@
         (write-setting 'esc-id 0)
 
         (write-setting 'icon-mask 0x3F)
-        (write-setting 'batt-ramp 0)
+        (write-setting 'batt-ramp 1)
         (write-setting 'splash-en 1)
 
         (write-setting 'col-accent 0x00C8FF)

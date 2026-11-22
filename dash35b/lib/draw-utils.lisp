@@ -3,12 +3,12 @@
 (defun ttf-txt-center (txt font imgbuf) {
         (var (w-txt h-txt) (ttf-text-dims font txt))
         (var (w-glyph h-glyph) (ttf-glyph-dims font "D"))
-        (var (w-img h-img) (img-dims imgbuf))
+        (var (w-img h-img) (scene-dims imgbuf))
 
         (var colors (if (ix (rest-args) 0) (ix (rest-args) 0) '(0 1 2 3)))
         (var py (if (ix (rest-args) 1) (ix (rest-args) 1) (+ h-glyph (/ (- h-img h-glyph) 2))))
 
-        (ttf-text imgbuf
+        (scene-text imgbuf
             (/ (- w-img w-txt) 2)
             py
             colors font txt

@@ -1,11 +1,7 @@
 @const-start
 
-; Was an 8 kB bitmap of a solid rectangle
-(defun page-clear () {
-        (var strip (img-buffer dm-pool 'indexed2 400 20))
-        (looprange i 0 8 (disp-render strip page-x (+ page-y (* i 20))
-            (list color-bg color-bg)))
-})
+(defun page-clear ()
+    (scene-fill page-x page-y page-w page-h color-bg))
 
 (def page-x 70)
 (def page-y 45)
@@ -30,11 +26,11 @@
         (if (rest-args) (setq color (rest-args 0)))
 
         (var (w-txt h-txt) (ttf-text-dims font-16 str))
-        (var (w-img h-img) (img-dims imgbuf))
+        (var (w-img h-img) (scene-dims imgbuf))
         (var render-x (- w-img w-txt))
-        (img-clear imgbuf)
-        (ttf-text imgbuf render-x 16 '(0 1 2 3) font-16 str)
-        (disp-render imgbuf x y color)
+        (scene-clear imgbuf)
+        (scene-text imgbuf render-x 16 '(0 1 2 3) font-16 str)
+        (scene-present imgbuf x y color)
 })
 
 ;; Given an image buffer draw a left aligned text in there and
@@ -43,9 +39,9 @@
         (var color colors-text-aa)
         (if (rest-args) (setq color (rest-args 0)))
 
-        (img-clear imgbuf)
-        (ttf-text imgbuf 0 16 '(0 1 2 3) font-16 str)
-        (disp-render imgbuf x y color)
+        (scene-clear imgbuf)
+        (scene-text imgbuf 0 16 '(0 1 2 3) font-16 str)
+        (scene-present imgbuf x y color)
 })
 
 (defun trunc01 (x)
@@ -80,7 +76,7 @@
 
                 (setq page-resources
                     (list
-                        (cons 'text-img (img-buffer dm-pool 'indexed4 90 20))
+                        (cons 'text-img (scene-buffer 'indexed4 90 20))
                 ))
 
                 (page-clear)
@@ -146,7 +142,7 @@
 
                 (setq page-resources
                     (list
-                        (cons 'text-img (img-buffer dm-pool 'indexed4 90 20))
+                        (cons 'text-img (scene-buffer 'indexed4 90 20))
                 ))
 
                 (page-clear)
@@ -220,8 +216,8 @@
 })
 
 (defun draw-bat-cell (cell imgbuf x y v-empty v-full volt bal) {
-        (img-clear imgbuf)
-        (var (w h) (img-dims imgbuf))
+        (scene-clear imgbuf)
+        (var (w h) (scene-dims imgbuf))
 
         ; Calculate fill ratio (0.0 to 1.0)
         (var voltage-range (- v-full v-empty))
@@ -232,17 +228,21 @@
         (var fill-height (to-i (* fill-ratio (- h 2))))
 
         ; Draw cell outline
-        (img-rectangle imgbuf 0 0 w h 2 '(filled) '(rounded 3))
+        (scene-rectangle imgbuf 0 0 w h 2 '(filled) '(rounded 3))
 
         ; Fill cell with appropriate color
         (if (> fill-height 0) {
                 (var fill-color (if bal 4 3))  ; Red if low, normal color otherwise
-                (img-rectangle imgbuf 0 (- h 0 fill-height) w fill-height fill-color '(filled) '(rounded 3))
+                (scene-rectangle imgbuf 0 (- h 0 fill-height) w fill-height fill-color
+                    '(filled) '(rounded 3))
         })
 
-        (ttf-text imgbuf (- w 2) (- h 2) '(0 1) font-16-2c (str-merge (str-from-n cell "%02d") (str-from-n (to-float volt) "-%.2f")) 'up)
+        (scene-text imgbuf (- w 2) (- h 2) '(0 1) font-16-2c
+            (str-merge (str-from-n cell "%02d") (str-from-n (to-float volt) "-%.2f"))
+            'up)
 
-        (disp-render imgbuf x y (list 0x000000 0xFFFFFF 0x787878 0x00C321 0xFF7700 0 0 0 0 0 0 0 0 0 0 0))
+        (scene-present imgbuf x y
+            (list 0x000000 0xFFFFFF 0x787878 0x00C321 0xFF7700 0 0 0 0 0 0 0 0 0 0 0))
 })
 
 (defun get-page-3-state () (list
@@ -277,8 +277,8 @@
                 (setq update-state (map (fn (x) t) update-state))
                 (setq page-resources
                     (list
-                        (cons 'cell-img (img-buffer dm-pool 'indexed16 cell-width cell-height))
-                        (cons 'text-img (img-buffer dm-pool 'indexed4 69 20))
+                        (cons 'cell-img (scene-buffer 'indexed16 cell-width cell-height))
+                        (cons 'text-img (scene-buffer 'indexed4 69 20))
                 ))
 
                 (var textimg (assoc page-resources 'text-img))
@@ -348,6 +348,18 @@
         (list setting-now)
 ))
 
+(def wheelie-bike-palette '(
+        0xD9D9D6 0xC9C7C2 0x9E9D98 0x7F7D79 0x6C645B
+        0x5F5452 0x6C449E 0x4D463D 0x6B3EA8 0x463946
+        0x2F2B29 0x1E1C1D 0x171716 0x0C0C0C
+))
+
+(defun wheelie-bike (tile x y angle) {
+        (img-line tile (+ x 12) (+ y 192) (+ x 222) (+ y 192) 15)
+        (img-blit tile img-wheelie-bike (+ x 35) (+ y 82) 0
+            (list 'rotate 32 80 angle))
+})
+
 (def page-4-state (get-page-4-state))
 (defun page-4 (s) {
         (var cat-col-x 70)
@@ -362,8 +374,8 @@
 
                 (setq page-resources
                     (list
-                        (cons 'text-img (img-buffer dm-pool 'indexed4 90 20))
-                        (cons 'title-img (img-buffer dm-pool 'indexed4 (- 480 page-x page-x) 20))
+                        (cons 'text-img (scene-buffer 'indexed4 90 20))
+                        (cons 'title-img (scene-buffer 'indexed4 (- 480 page-x page-x) 20))
                 ))
 
                 (page-clear)
@@ -373,7 +385,7 @@
 
                 ; Draw static labels
                 (ttf-txt-center "Settings" font-16 titleimg)
-                (disp-render titleimg page-x (+ page-y 10) colors-text-aa)
+                (scene-present titleimg page-x (+ page-y 10) colors-text-aa)
 
                 (looprange i 0 rows
                     (ttf-txt-right textimg (+ page-x cat-col-x) (+ page-y 40 (* i 20))
@@ -431,8 +443,8 @@
                 (setq update-state (map (fn (x) t) update-state))
 
                 (setq page-resources (list
-                        (cons 'lbl-img (img-buffer dm-pool 'indexed4 200 16))
-                        (cons 'val-img (img-buffer dm-pool 'indexed4 200 34))
+                        (cons 'lbl-img (scene-buffer 'indexed4 200 16))
+                        (cons 'val-img (scene-buffer 'indexed4 200 34))
                 ))
 
                 (page-clear)
@@ -442,10 +454,10 @@
                         (var cx (+ page-x (* (mod i 2) 200)))
                         (var cy (+ page-y (* (/ i 2) 80)))
                         (var src (ix settings-slots i))
-                        (img-clear lblimg)
-                        (ttf-text lblimg 6 14 '(0 1 2 3) font-16
+                        (scene-clear lblimg)
+                        (scene-text lblimg 6 14 '(0 1 2 3) font-16
                             (str-merge (slot-label src) "  " (slot-unit src)))
-                        (disp-render lblimg cx (+ cy 4) colors-text-aa)
+                        (scene-present lblimg cx (+ cy 4) colors-text-aa)
                 })
         })
 
@@ -455,10 +467,10 @@
                     (var cx (+ page-x (* (mod i 2) 200)))
                     (var cy (+ page-y (* (/ i 2) 80)))
                     (var str (ix curr-state i))
-                    (img-clear valimg)
+                    (scene-clear valimg)
 
-                    (ttf-text valimg 20 30 '(0 1 2 3) font-32 str)
-                    (disp-render valimg cx (+ cy 28) (slot-colors i))
+                    (scene-text valimg 20 30 '(0 1 2 3) font-32 str)
+                    (scene-present valimg cx (+ cy 28) (slot-colors i))
             })
         )
 
@@ -485,19 +497,158 @@
 (def pages (list page-5 page-1 page-2 page-3 page-4))
 (settings-apply-pages)
 
-(defun view-pages-thread () {
-        ;; recreated if the view thread restarts
-        (var last-page 100) ;; Should mean that we get s on first call
+(def wheelie-fields '(whl-active whl-start whl-end whl-kd))
 
-        ;; Could make an assoc list or  a struct for the various arguments passed to the page-fun.
+(defun wheelie-toggle () {
+        (if wheelie-open {
+                (setq page-now 0)
+                (setq wheelie-open nil)
+        } {
+                (setq wheelie-selected 0)
+                (setq wheelie-open t)
+        })
+})
+
+(defun wheelie-button (idx) {
+        (cond
+            ((= idx 0) (setq wheelie-selected (mod (+ wheelie-selected 1) 4)))
+            ((or (= idx 1) (= idx 2)) {
+                    (var setting (ix wheelie-fields wheelie-selected))
+                    (var row (assoc setting-catalog setting))
+                    (var step (ix row 2))
+                    (var limits (list (ix row 3) (ix row 4)))
+                    (write-adjusted-setting setting (if (= idx 1) - +) step limits)
+            })
+        )
+})
+
+(defun wheelie-frame () {
+        (scene-clear-screen color-bg)
+        (scene-present img-vesc 13 8 colors-vesc)
+
+        (var header (scene-buffer 'indexed4 382 34))
+        (scene-text header 0 23 '(0 1 2 3) font-16 "WHEELIE SETTINGS")
+        (scene-present header 62 8 colors-text-aa)
+        (scene-fill 12 46 456 2 color-accent)
+})
+
+(defun wheelie-render-bike (angle) {
+        (var tile (scene-buffer 'indexed16 240 200))
+        (scene-record tile wheelie-bike (list 0 0 angle) nil)
+        (scene-present tile 232 91
+            (cons color-bg
+                (append wheelie-bike-palette (list (color-mix color-bg color-text 0.35)))))
+})
+
+(defun wheelie-caption (text) {
+        (var caption (scene-buffer 'indexed4 236 26))
+        (ttf-txt-center text font-16 caption)
+        (scene-present caption 232 58 colors-text-aa)
+})
+
+(defun wheelie-preview (end-angle angle) {
+        (var name (if end-angle "Angle end  " "Angle start  "))
+        (wheelie-caption (str-merge name (str-from-n (to-float angle) "%.1f deg")))
+        (wheelie-render-bike angle)
+})
+
+(defun wheelie-damping-angle (elapsed start end damping) {
+        (var center (clamp (/ (+ start end) 2.0) 12.0 43.0))
+        (var phase (- elapsed (* 3.2 (to-i (/ elapsed 3.2)))))
+        (if (>= phase 2.5) center {
+                (var decay (exp (* -70.0 damping phase)))
+                (var swing (* 11.0 decay (sin (* phase 5.026548))))
+                (+ center swing)
+        })
+})
+
+(defun wheelie-update (previous selection) {
+        (var selected wheelie-selected)
+        (var values (map read-setting wheelie-fields))
+        (var row-img (scene-buffer 'indexed4 208 50))
+        (looprange i 0 4 {
+                (var value (ix values i))
+                (if (or (not previous) (!= value (ix previous i))
+                        (and (!= selection selected) (or (= i selection) (= i selected)))) {
+                        (var row (assoc setting-catalog (ix wheelie-fields i)))
+                        (var caption (ix row 0))
+                        (var text (if (= i 0)
+                            (if (= value 1) "ON" "OFF")
+                            (str-from-n value (ix row 1))))
+                        (scene-clear row-img)
+                        (scene-text row-img 10 30 '(0 1 2 3) font-16 caption)
+                        (var width (ix (ttf-text-dims font-16 text) 0))
+                        (scene-text row-img (- 198 width) 30 '(0 1 2 3) font-16 text)
+                        (scene-present row-img 12 (+ 61 (* i 60))
+                            (if (= i selected) colors-text-sel-aa colors-text-aa))
+                })
+        })
+        (var index (if (= selected 2) 2 1))
+        (var previous-index (if (= selection 2) 2 1))
+        (var angle (ix values index))
+        (if (!= selected 3) {
+                (if (or (not previous) (= selection 3) (!= index previous-index)
+                        (!= angle (ix previous index)))
+                    (wheelie-preview (= index 2) angle))
+        })
+        (list values selected)
+})
+
+(defun view-pages-thread () {
+        (var last-page -1)
+        (var wheelie-values nil)
+        (var wheelie-selection -1)
+        (var demo-start 0)
+        (var demo-frame 0)
+        (var demo-angle nil)
 
         (loopwhile t {
-                (var page-now-sample page-now)
-                (var curr-page (ix pages page-now-sample))
                 (var force view-force-pages)
                 (setq view-force-pages false)
-                (if curr-page (curr-page (or force (not (= last-page page-now-sample)))))
-                (setq last-page page-now-sample)
+                (if wheelie-open {
+                        (if wheelie-static-paused {
+                                (if (or force (not wheelie-drawn)) {
+                                        (setq wheelie-drawn t)
+                                        (wheelie-frame)
+                                        (setq wheelie-values nil)
+                                })
+                                (var (values selected) (wheelie-update wheelie-values wheelie-selection))
+                                (if (= selected 3) {
+                                        (var damping (ix values 3))
+                                        (if (or (not wheelie-values) (!= wheelie-selection 3)
+                                                (!= damping (ix wheelie-values 3))) {
+                                                (setq demo-start (systime))
+                                                (setq demo-frame demo-start)
+                                                (setq demo-angle nil)
+                                                (wheelie-caption
+                                                    (str-merge "Damping demo  " (str-from-n damping "%.3f")))
+                                        })
+                                        (if (or (not demo-angle) (>= (secs-since demo-frame) 0.085)) {
+                                                (var angle (wheelie-damping-angle (secs-since demo-start)
+                                                    (ix values 1) (ix values 2) damping))
+                                                (var rounded-angle (/ (round (* angle 2.0)) 2.0))
+                                                (if (or (not demo-angle) (!= rounded-angle demo-angle)) {
+                                                        (wheelie-render-bike rounded-angle)
+                                                        (setq demo-angle rounded-angle)
+                                                })
+                                                (setq demo-frame (systime))
+                                        })
+                                })
+                                (setq wheelie-values values)
+                                (setq wheelie-selection selected)
+                        })
+                } {
+                        (if wheelie-drawn {
+                                (scene-clear-screen color-bg)
+                                (setq wheelie-drawn nil)
+                                (setq view-force-static true)
+                                (setq last-page -1)
+                        })
+                        (var current-page page-now)
+                        (var draw (ix pages current-page))
+                        (if draw (draw (or force (!= last-page current-page))))
+                        (setq last-page current-page)
+                })
                 (sleep 0.05)
         })
 })

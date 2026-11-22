@@ -25,6 +25,9 @@
 (import "lib/statistics.lisp" 'code-statistics)
 (read-eval-program code-statistics)
 
+(import "lib/scene.lisp" 'code-scene)
+(read-eval-program code-scene)
+
 (import "lib/draw-utils.lisp" 'code-draw-utils)
 (read-eval-program code-draw-utils)
 
@@ -47,6 +50,7 @@
 ; Assets
 (import "assets/sym_vesc_37x34.bin" 'img-vesc)
 (import "assets/vesclabs_260x80.bin" 'img-vesclabs)
+(import "assets/motor.bin" 'img-wheelie-bike)
 (import "assets/batt_level_50x210.bin" 'img-batt-level)
 (import "assets/highbeam_32x24.bin" 'img-highbeam)
 (import "assets/lowbeam_32x24.bin" 'img-lowbeam)
@@ -67,23 +71,22 @@
 (import "font/roboto-bold-16-2c.bin" 'font-16-2c)
 (import "font/roboto-bold-90-2c.bin" 'font-90)
 
+(defun write-adjusted-setting (setting op step limits) {
+        (var value (eval (list op (read-setting setting) step)))
+        (write-setting setting (clamp value (first limits) (second limits)))
+})
+
+(defun adjust-setting (setting op step limits) {
+        (write-adjusted-setting setting op step limits)
+        (settings-load)
+        (settings-apply-units)
+        (disp-set-bl (if backlight-dim settings-bl-dim settings-bl-bright))
+})
+
 (defun setting-update (op) {
-        (if (> setting-num 0) {
-                (var setting (ix setting-list-page1 setting-now))
-                (var lim (ix setting-lim-page1 setting-now))
-                (var step (ix setting-step-page1 setting-now))
-
-                (write-setting setting
-                    (clamp
-                        (eval (list op (read-setting setting) step))
-                        (first lim)
-                        (second lim)
-                ))
-
-                (settings-load)
-                (settings-apply-units)
-                (disp-set-bl (if backlight-dim settings-bl-dim settings-bl-bright))
-        })
+        (if (> setting-num 0)
+            (adjust-setting (ix setting-list-page1 setting-now) op
+                (ix setting-step-page1 setting-now) (ix setting-lim-page1 setting-now)))
 })
 
 ; Stored in eeprom, so these keep their meaning.
@@ -103,21 +106,23 @@
         })
         ((= a 8) (comm-send-event 0))
         ((= a 9) (comm-send-event 2)) ; start or stop logging on the controller
+        ((= a 10) (wheelie-toggle))
         (t nil)
 ))
 
 ; On the settings page short presses always navigate it
 (defun btn-short (idx)
-    (if (= page-now page-num)
-        (cond
-            ((= idx 0) (if (> setting-num 0)
-                          (setq setting-now (mod (+ setting-now 1) setting-num))))
-            ((= idx 1) (setting-update -))
-            ((= idx 2) (setting-update +))
-            (t (btn-do-action (ix btn-actions-short idx)))
-        )
-        (btn-do-action (ix btn-actions-short idx))
-))
+    (cond
+        (wheelie-open (wheelie-button idx))
+        ((= page-now page-num)
+            (cond
+                ((= idx 0)
+                    (if (> setting-num 0)
+                        (setq setting-now (mod (+ setting-now 1) setting-num))))
+                ((= idx 1) (setting-update -))
+                ((= idx 2) (setting-update +))
+                (t (btn-do-action (ix btn-actions-short idx)))))
+        (t (btn-do-action (ix btn-actions-short idx)))))
 
 ; Shown once at boot, so a dead panel looks different from a blank one.
 ; A short-lived banner over the normal views, used for things the controller
@@ -132,11 +137,11 @@
 })
 
 (defun notify-draw (txt) {
-        (var imgbuf (img-buffer dm-pool 'indexed4 260 34))
-        (img-clear imgbuf)
-        (img-rectangle imgbuf 0 0 260 34 1 '(rounded 6))
+        (var imgbuf (scene-buffer 'indexed4 260 34))
+        (scene-clear imgbuf)
+        (scene-rectangle imgbuf 0 0 260 34 1 '(rounded 6))
         (ttf-txt-center txt font-16 imgbuf)
-        (disp-render imgbuf 110 143 colors-text-aa)
+        (scene-present imgbuf 110 143 colors-text-aa)
 })
 
 (defun notify-thread () {
@@ -173,39 +178,38 @@
         })
 })
 
+(defun splash-progress (progress start duration) {
+        (var t0 (clamp01 (/ (- progress start) duration)))
+        (* t0 t0 (- 3.0 (* 2.0 t0)))
+})
+
 (defun show-splash () {
-        (print "Splash")
+        (var label (scene-buffer 'indexed4 192 20))
+        (ttf-txt-center splash-version font-16 label)
+        (disp-set-bl settings-bl-bright)
 
-        (disp-render img-vesclabs 110 100 (list color-bg 0xF05A22 0xF05A22 0xFBFCFC))
+        (var draw-frame (fn (progress) {
+                (var fade (splash-progress progress 0.0 0.82))
+                (var orange (color-mix color-bg 0xF05A22 fade))
+                (var white (color-mix color-bg 0xFBFCFC fade))
+                (scene-present img-vesclabs 110 100 (list color-bg orange orange white))
 
-        (var imgbuf (img-buffer dm-pool 'indexed4 240 22))
-        (img-clear imgbuf)
-        (ttf-txt-center splash-version font-16 imgbuf)
-        (disp-render imgbuf 120 196 colors-text-aa)
+                (if (> progress 0.52) {
+                        (var caption (splash-progress progress 0.52 0.48))
+                        (var palette
+                            (map (fn (color) (color-mix color-bg color caption)) colors-text-aa))
+                        (scene-present label 144 196 palette)
+                })
+        }))
 
-        (looprange i 1 (+ settings-bl-bright 1) {
-                (disp-set-bl i)
-                (sleep 0.06)
-        })
-
-        (sleep 1.8)
-        (disp-clear color-bg)
+        (scene-animate 0.72 draw-frame)
+        (sleep 0.42)
+        (scene-fill 110 100 260 116 color-bg)
 })
 
 (defun main () {
-        (if (and
-                (> (conf-get 'wifi-mode) 0)
-                (> (conf-get 'ble-mode) 0)
-                ) {
-                (print "WiFi and BLE enabled, not enough memory to run UI. Disabling wifi...")
-                (conf-set 'wifi-mode 0)
-                (conf-set 'controller-id 4)
-                (conf-store)
-                (sleep 5)
-                (reboot)
-        })
-
-        (def dm-pool (dm-create 25600))
+        (disp-set-bl 0)
+        (scene-init)
 
         (set-print-prefix "DISP-")
 
@@ -231,14 +235,19 @@
 
         (if config-code-server (start-code-server)) ; Enable remote code execution
 
-        (disp-set-bl 0)
         (disp-reset)
         (disp-orientation 3)
-        (disp-clear color-bg)
+        (scene-clear-screen color-bg)
+        (sleep 0.04)
 
-        ; Trapped: the backlight is off at this point, so a splash that throws
-        ; would leave a dark unresponsive panel that looks like a dead unit.
-        (if settings-splash (trap (show-splash)))
+        (if settings-splash {
+                (var result (trap (show-splash)))
+                (if (eq (car result) 'exit-error) {
+                        (disp-set-bl 0)
+                        (scene-clear-screen color-bg)
+                        (sleep 0.04)
+                })
+        })
         (disp-set-bl settings-bl-bright)
 
         (event-register-handler (spawn event-handler))
